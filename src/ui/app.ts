@@ -3,6 +3,7 @@ import { randomSeed } from '../core/rng';
 import { DIFFICULTY_LEVEL, ISL, Solver, UNK, WALL } from '../core/solver';
 import { DIFFICULTIES, Mark, type Difficulty, type Puzzle } from '../core/types';
 import { BoardView } from './boardView';
+import { detectLang, difficultyName, LANGS, setLang, t, tn, type Lang } from './i18n';
 import { formatTime, Timer } from './timer';
 
 const SAVE_KEY = 'nurikabe.save.v1';
@@ -23,6 +24,7 @@ interface Prefs {
   h: number;
   difficulty: Difficulty;
   colorWalls: boolean;
+  lang: Lang;
 }
 
 interface Save {
@@ -71,12 +73,14 @@ export class App {
   private worker: Worker | null = null;
   private requestId = 0;
   private prefs: Prefs;
+  private winIsBest = false;
 
   private board: BoardView;
   private timer: Timer;
 
   constructor() {
-    this.prefs = { w: 7, h: 7, difficulty: 'easy', colorWalls: true, ...load<Prefs>(PREFS_KEY) };
+    this.prefs = { w: 7, h: 7, difficulty: 'easy', colorWalls: true, lang: detectLang(), ...load<Prefs>(PREFS_KEY) };
+    setLang(this.prefs.lang);
     this.timer = new Timer((ms) => {
       $('#time').textContent = formatTime(ms);
     });
@@ -106,9 +110,11 @@ export class App {
   private setupControls(): void {
     const size = $<HTMLSelectElement>('#size');
     for (const [w, h] of SIZES) size.add(new Option(`${w} × ${h}`, `${w}x${h}`));
-    size.add(new Option('Custom…', 'custom'));
+    size.add(new Option(t('custom'), 'custom'));
     const diff = $<HTMLSelectElement>('#difficulty');
-    for (const d of DIFFICULTIES) diff.add(new Option(d[0].toUpperCase() + d.slice(1), d));
+    for (const d of DIFFICULTIES) diff.add(new Option(difficultyName(d), d));
+    const lang = $<HTMLSelectElement>('#lang');
+    for (const l of LANGS) lang.add(new Option(l.name, l.id));
     this.syncPrefControls();
 
     size.addEventListener('change', () => {
@@ -129,6 +135,10 @@ export class App {
       });
     }
     diff.addEventListener('change', () => this.setPrefs({ difficulty: diff.value as Difficulty }));
+    lang.addEventListener('change', () => {
+      this.setPrefs({ lang: lang.value as Lang });
+      this.relabel();
+    });
     $<HTMLInputElement>('#color-walls').addEventListener('change', (e) => {
       this.setPrefs({ colorWalls: (e.target as HTMLInputElement).checked });
       this.render();
@@ -166,7 +176,7 @@ export class App {
   }
 
   private syncPrefControls(): void {
-    const { w, h, difficulty, colorWalls } = this.prefs;
+    const { w, h, difficulty, colorWalls, lang } = this.prefs;
     const size = $<HTMLSelectElement>('#size');
     const preset = SIZES.some(([pw, ph]) => pw === w && ph === h);
     size.value = preset ? `${w}x${h}` : 'custom';
@@ -175,6 +185,19 @@ export class App {
     $<HTMLInputElement>('#ch').value = String(h);
     $<HTMLSelectElement>('#difficulty').value = difficulty;
     $<HTMLInputElement>('#color-walls').checked = colorWalls;
+    $<HTMLSelectElement>('#lang').value = lang;
+  }
+
+  /** Re-translate everything on screen after a language change. */
+  private relabel(): void {
+    setLang(this.prefs.lang);
+    const size = $<HTMLSelectElement>('#size');
+    size.options[size.options.length - 1].text = t('custom');
+    for (const o of $<HTMLSelectElement>('#difficulty').options) o.text = difficultyName(o.value as Difficulty);
+    $('#pause').textContent = this.paused ? t('resume') : t('pause');
+    if (this.solved) this.showWinText();
+    this.renderMeta();
+    this.render();
   }
 
   private setPrefs(p: Partial<Prefs>): void {
@@ -201,7 +224,7 @@ export class App {
     if (!this.puzzle) return;
     const url = `${location.origin}${location.pathname}#${this.hashFor(this.puzzle)}`;
     navigator.clipboard?.writeText(url).then(
-      () => this.toast('Puzzle link copied'),
+      () => this.toast(t('linkCopied')),
       () => this.toast(url),
     );
   }
@@ -230,10 +253,10 @@ export class App {
     };
     this.worker.onerror = () => {
       $('#generating').hidden = true;
-      this.toast('Generation failed');
+      this.toast(t('generationFailed'));
     };
     $('#generating').hidden = false;
-    $('#gen-label').textContent = `Generating ${req.w} × ${req.h} ${req.difficulty}…`;
+    $('#gen-label').textContent = t('generatingSize', { w: req.w, h: req.h, difficulty: difficultyName(req.difficulty).toLowerCase() });
     this.timer.pause();
     this.worker.postMessage({ id, ...req });
   }
@@ -258,8 +281,7 @@ export class App {
     this.timer.reset(elapsed);
     history.replaceState(null, '', `#${this.hashFor(puzzle)}`);
 
-    const grade = puzzle.grade !== puzzle.difficulty ? ` (graded ${puzzle.grade})` : '';
-    $('#meta').textContent = `${puzzle.w} × ${puzzle.h} · ${puzzle.difficulty}${grade} · #${puzzle.seed}`;
+    this.renderMeta();
     this.board.build(puzzle.w, puzzle.h, puzzle.clues);
     this.fit();
     this.update();
@@ -398,7 +420,7 @@ export class App {
     this.paused = p;
     $('#paused').hidden = !p;
     $('#board').classList.toggle('blurred', p);
-    $('#pause').textContent = p ? 'Resume' : 'Pause';
+    $('#pause').textContent = p ? t('resume') : t('pause');
     if (p) this.timer.pause();
     else if (this.marks.some((m) => m !== Mark.Unknown)) this.timer.start();
     this.save();
@@ -413,7 +435,7 @@ export class App {
       if (clues[i]) return;
       if (m === Mark.Wall && solution[i] === 0) this.wrong.add(i);
     });
-    this.toast(this.wrong.size ? `${this.wrong.size} mistake${this.wrong.size > 1 ? 's' : ''}` : 'No mistakes so far');
+    this.toast(this.wrong.size ? tn('mistakes', this.wrong.size) : t('noMistakes'));
     this.flash();
   }
 
@@ -424,7 +446,7 @@ export class App {
     const wrong = this.marks.findIndex((m, i) => !p.clues[i] && m === Mark.Wall && p.solution[i] === 0);
     if (wrong >= 0) {
       this.wrong = new Set([wrong]);
-      this.toast('This cell is wrong');
+      this.toast(t('cellWrong'));
       this.flash();
       return;
     }
@@ -443,7 +465,7 @@ export class App {
       cells = step.filter(isNewWall);
     }
     if (!cells.length) cells = this.marks.map((_, i) => i).filter(isNewWall);
-    if (!cells.length) return this.toast('Nothing left to hint');
+    if (!cells.length) return this.toast(t('nothingToHint'));
     const i = cells[Math.floor(Math.random() * cells.length)];
     this.setCell(i, Mark.Wall);
     this.hint = new Set([i]);
@@ -452,7 +474,7 @@ export class App {
 
   private reveal(): void {
     if (!this.puzzle || this.solved || this.revealed) return;
-    if (!confirm('Reveal the solution? This ends the game.')) return;
+    if (!confirm(t('confirmReveal'))) return;
     this.pushUndo();
     this.marks = this.puzzle.solution.map((s, i) => (this.puzzle!.clues[i] ? Mark.Unknown : s === 1 ? Mark.Wall : Mark.Unknown));
     this.revealed = true;
@@ -500,11 +522,12 @@ export class App {
     const groups = a.walls.length;
     const isolated = a.walls.filter((g) => g.isolated).length;
     const wallEl = $('#walls');
-    wallEl.textContent = groups <= 1 ? (groups ? 'connected' : '—') : `${groups} groups${isolated ? ` · ${isolated} cut off` : ''}`;
+    wallEl.textContent =
+      groups <= 1 ? (groups ? t('wallsConnected') : '—') : tn('wallGroups', groups) + (isolated ? t('cutOff', { n: isolated }) : '');
     wallEl.classList.toggle('bad', isolated > 0);
     const problems = [
-      a.poolCells.size ? '2×2 wall pool' : '',
-      a.islands.some((i) => i.error) ? 'broken island' : '',
+      a.poolCells.size ? t('pool') : '',
+      a.islands.some((i) => i.error) ? t('brokenIsland') : '',
     ].filter(Boolean);
     const probEl = $('#problems');
     probEl.textContent = problems.join(' · ');
@@ -520,17 +543,31 @@ export class App {
     const ms = this.timer.elapsed;
     const key = `${p.w}x${p.h}:${p.difficulty}`;
     const best = load<Record<string, number>>(BEST_KEY) ?? {};
-    const isBest = !best[key] || ms < best[key];
-    if (isBest) {
+    this.winIsBest = !best[key] || ms < best[key];
+    if (this.winIsBest) {
       best[key] = ms;
       store(BEST_KEY, best);
     }
     $('#board').classList.add('done');
-    $('#win-time').textContent = formatTime(ms);
-    $('#win-best').textContent = isBest ? 'New best time!' : `Best: ${formatTime(best[key])}`;
-    $('#win-meta').textContent = `${p.w} × ${p.h} · ${p.difficulty}`;
+    this.showWinText();
     window.setTimeout(() => ($('#win').hidden = false), 350);
     this.save();
+  }
+
+  private showWinText(): void {
+    const p = this.puzzle!;
+    const ms = this.timer.elapsed;
+    const best = load<Record<string, number>>(BEST_KEY)?.[`${p.w}x${p.h}:${p.difficulty}`] ?? ms;
+    $('#win-time').textContent = formatTime(ms);
+    $('#win-best').textContent = this.winIsBest ? t('newBest') : t('best', { time: formatTime(best) });
+    $('#win-meta').textContent = `${p.w} × ${p.h} · ${difficultyName(p.difficulty)}`;
+  }
+
+  private renderMeta(): void {
+    const p = this.puzzle;
+    if (!p) return;
+    const grade = p.grade !== p.difficulty ? t('graded', { grade: difficultyName(p.grade).toLowerCase() }) : '';
+    $('#meta').textContent = `${p.w} × ${p.h} · ${difficultyName(p.difficulty).toLowerCase()}${grade} · #${p.seed}`;
   }
 
   private save(): void {

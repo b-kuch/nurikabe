@@ -1,5 +1,6 @@
 import type { Analysis } from '../core/analysis';
 import { Mark } from '../core/types';
+import { t } from './i18n';
 
 export interface BoardInput {
   /** a stroke begins: returns the mark to paint, or null to ignore */
@@ -86,11 +87,11 @@ export class BoardView {
 
       const label =
         clues[i] > 0
-          ? `clue ${clues[i]}${island?.complete ? ', complete' : ''}`
+          ? t('cell.clue', { n: clues[i] }) + (island?.complete ? t('cell.complete') : '')
           : m === Mark.Wall
-            ? 'wall'
-            : 'empty';
-      el.setAttribute('aria-label', `row ${Math.floor(i / this.w) + 1}, column ${(i % this.w) + 1}: ${label}`);
+            ? t('cell.wall')
+            : t('cell.empty');
+      el.setAttribute('aria-label', t('cell.pos', { row: Math.floor(i / this.w) + 1, col: (i % this.w) + 1, label }));
     }
   }
 

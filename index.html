@@ -20,62 +20,63 @@
     <header>
       <h1>Nurikabe</h1>
       <div class="controls">
-        <label>Size <select id="size"></select></label>
+        <label><span data-i18n="size">Size</span> <select id="size"></select></label>
         <span id="custom" hidden>
-          <input id="cw" type="number" min="4" max="25" aria-label="width" /> ×
-          <input id="ch" type="number" min="4" max="25" aria-label="height" />
+          <input id="cw" type="number" min="4" max="25" aria-label="width" data-i18n-aria="width" /> ×
+          <input id="ch" type="number" min="4" max="25" aria-label="height" data-i18n-aria="height" />
         </span>
-        <label>Difficulty <select id="difficulty"></select></label>
-        <button id="new" class="primary">New game</button>
+        <label><span data-i18n="difficulty">Difficulty</span> <select id="difficulty"></select></label>
+        <button id="new" class="primary" data-i18n="newGame">New game</button>
       </div>
     </header>
 
     <main>
       <section class="bar">
-        <div class="stat time-stat"><span class="label">Time</span><span id="time">0:00</span></div>
+        <div class="stat time-stat"><span class="label" data-i18n="time">Time</span><span id="time">0:00</span></div>
         <div class="stat">
-          <span class="label">Islands</span><span id="islands">0/0</span>
+          <span class="label" data-i18n="islands">Islands</span><span id="islands">0/0</span>
           <span class="progress"><span id="islands-bar"></span></span>
         </div>
-        <div class="stat"><span class="label">Walls</span><span id="walls">—</span></div>
+        <div class="stat"><span class="label" data-i18n="walls">Walls</span><span id="walls">—</span></div>
         <div class="stat problems" id="problems"></div>
         <div class="buttons">
-          <button id="undo" title="Undo (Ctrl+Z)">Undo</button>
-          <button id="redo" title="Redo (Ctrl+Y)">Redo</button>
-          <button id="pause" title="Pause (P)">Pause</button>
-          <button id="hint">Hint</button>
-          <button id="check">Check</button>
-          <button id="restart">Restart</button>
-          <button id="reveal">Reveal</button>
+          <button id="undo" title="Undo (Ctrl+Z)" data-i18n-title="undo.title" data-i18n="undo">Undo</button>
+          <button id="redo" title="Redo (Ctrl+Y)" data-i18n-title="redo.title" data-i18n="redo">Redo</button>
+          <button id="pause" title="Pause (P)" data-i18n-title="pause.title" data-i18n="pause">Pause</button>
+          <button id="hint" data-i18n="hint">Hint</button>
+          <button id="check" data-i18n="check">Check</button>
+          <button id="restart" data-i18n="restart">Restart</button>
+          <button id="reveal" data-i18n="reveal">Reveal</button>
         </div>
       </section>
 
       <div id="board-wrap">
-        <div id="board" role="grid" aria-label="Nurikabe board"></div>
-        <div id="paused" class="overlay" hidden><button>Paused — click to resume</button></div>
+        <div id="board" role="grid" aria-label="Nurikabe board" data-i18n-aria="board"></div>
+        <div id="paused" class="overlay" hidden><button data-i18n="paused">Paused — click to resume</button></div>
         <div id="generating" class="overlay" hidden><div class="spinner"></div><span id="gen-label">Generating…</span></div>
         <div id="win" class="overlay" hidden>
           <div class="card">
-            <h2>Solved!</h2>
+            <h2 data-i18n="solved">Solved!</h2>
             <div id="win-time" class="big"></div>
             <div id="win-best"></div>
             <div id="win-meta" class="muted"></div>
-            <div class="row"><button id="win-new" class="primary">New game</button><button id="win-close">Close</button></div>
+            <div class="row"><button id="win-new" class="primary" data-i18n="newGame">New game</button><button id="win-close" data-i18n="close">Close</button></div>
           </div>
         </div>
       </div>
 
       <footer>
         <span id="meta" class="muted"></span>
-        <button id="share" class="link">Copy link</button>
-        <label class="toggle"><input type="checkbox" id="color-walls" /> Color separate wall groups</label>
+        <button id="share" class="link" data-i18n="copyLink">Copy link</button>
+        <label class="toggle"><input type="checkbox" id="color-walls" /> <span data-i18n="colorWalls">Color separate wall groups</span></label>
+        <label><span data-i18n="language">Language</span> <select id="lang"></select></label>
         <details>
-          <summary>How to play</summary>
-          <p>Shade cells as walls so that every number sits in an island of exactly that many cells, islands never touch
+          <summary data-i18n="howToPlay">How to play</summary>
+          <p data-i18n-html="help.rules">Shade cells as walls so that every number sits in an island of exactly that many cells, islands never touch
           each other orthogonally, all walls form one connected group, and no 2×2 block is entirely wall.</p>
-          <p><b>Click</b> toggles a wall, <b>right-click</b> clears a cell, and dragging paints. Keyboard: arrows move,
+          <p data-i18n-html="help.controls"><b>Click</b> toggles a wall, <b>right-click</b> clears a cell, and dragging paints. Keyboard: arrows move,
           <kbd>Space</kbd> toggles a wall, <kbd>Backspace</kbd> clears, <kbd>P</kbd> pauses, <kbd>N</kbd> starts a new game.</p>
-          <p>An island that is walled off with exactly its number of cells turns green. When walls are split into several
+          <p data-i18n-html="help.colors">An island that is walled off with exactly its number of cells turns green. When walls are split into several
           groups each extra group gets its own color; a group that can no longer connect is striped red, as are 2×2 wall
           pools and walled-off areas that are too small or have no number.</p>
         </details>
