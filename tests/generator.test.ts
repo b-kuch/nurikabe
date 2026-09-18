@@ -29,7 +29,7 @@ describe('generator', () => {
         const c = clues.filter(Boolean);
         return c.reduce((a, b) => a + b, 0) / c.length;
       };
-      const p = generate({ w: 10, h: 10, difficulty: 'expert', seed });
+      const p = generate({ w: 10, h: 10, difficulty: 'expert', seed, timeBudgetMs: 60000 });
       expect(p.grade).toBe('expert');
       expect(avg(p.clues)).toBeGreaterThanOrEqual(3.4);
       expect(avg(p.clues)).toBeGreaterThan(avg(generate({ w: 10, h: 10, difficulty: 'hard', seed }).clues));
